@@ -6,12 +6,13 @@ import { usePathname } from 'next/navigation';
 const navItems = [
   { href: '/', label: 'Home', icon: '🏠' },
   { href: '/tools', label: 'Tools', icon: '🛠️' },
+  { href: '/cron', label: 'Schedule', icon: '⏰' },
+  { href: '/tasks', label: 'Tasks', icon: '🎯' },
   { href: '/approvals', label: 'Approvals', icon: '✅' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
   { href: '/projects', label: 'Projects', icon: '📁' },
   { href: '/memory', label: 'Memory', icon: '🧠' },
   { href: '/docs', label: 'Docs', icon: '📄' },
-  { href: '/tasks', label: 'Tasks', icon: '🎯' },
 ];
 
 export default function Navbar() {
