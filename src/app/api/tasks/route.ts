@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   if (!NOTION_API_KEY || !DATABASE_ID) {
     return NextResponse.json({ error: 'Notion not configured' }, { status: 500 });
@@ -37,7 +39,13 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ tasks });
+    return NextResponse.json({ tasks }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
