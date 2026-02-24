@@ -2,7 +2,7 @@ export default {
   async fetch(request, env) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
 
@@ -11,6 +11,26 @@ export default {
     }
 
     const db = env.DB;
+
+    // Seed database (run once)
+    if (request.method === 'PUT') {
+      const seedTasks = [
+        { id: "1", title: "Set up Discord stock research factory", status: "in_progress", priority: "high", description: "Configure per-channel prompts and sub-agent automation" },
+        { id: "2", title: "Build kanban tasks page in mission-control", status: "completed", priority: "high", description: "Created kanban-style tasks page showing what I'm working on" },
+        { id: "3", title: "Set up Notion integration", status: "completed", priority: "medium", description: "Connected to Notion API for task access" },
+        { id: "4", title: "Maintain daily memory files", status: "completed", priority: "medium", description: "Updated MEMORY.md and daily notes" },
+      ];
+      
+      for (const task of seedTasks) {
+        await db.prepare('INSERT OR REPLACE INTO tasks (id, title, status, priority, description) VALUES (?, ?, ?, ?, ?)')
+          .bind(task.id, task.title, task.status, task.priority, task.description)
+          .run();
+      }
+      
+      return new Response(JSON.stringify({ success: true, message: 'Database seeded!' }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
 
     // GET - fetch all tasks
     if (request.method === 'GET') {
