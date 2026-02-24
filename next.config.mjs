@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  distDir: '.output',
   images: {
     unoptimized: true,
   },
   trailingSlash: true,
-  // Disable API routes for static export
-  api: false,
 };
 
 export default nextConfig;
