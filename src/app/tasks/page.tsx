@@ -10,6 +10,44 @@ interface Task {
   description: string;
 }
 
+const initialTasks: Task[] = [
+  {
+    id: "1",
+    title: "Set up Discord stock research factory",
+    status: "in_progress",
+    priority: "high",
+    description: "Configure per-channel prompts and sub-agent automation"
+  },
+  {
+    id: "2",
+    title: "Build kanban tasks page in mission-control",
+    status: "completed",
+    priority: "high",
+    description: "Created kanban-style tasks page showing what I'm working on"
+  },
+  {
+    id: "3",
+    title: "Set up Notion integration",
+    status: "completed",
+    priority: "medium",
+    description: "Connected to Notion API for task access"
+  },
+  {
+    id: "4",
+    title: "Maintain daily memory files",
+    status: "completed",
+    priority: "medium",
+    description: "Updated MEMORY.md and daily notes"
+  },
+  {
+    id: "test",
+    title: "Test task",
+    status: "todo",
+    priority: "low",
+    description: "Testing real-time task updates"
+  }
+];
+
 const columns = [
   { id: 'todo', title: 'To Do', color: '#64748b' },
   { id: 'in_progress', title: 'In Progress', color: '#3b82f6' },
@@ -17,31 +55,8 @@ const columns = [
 ];
 
 export default function AgentTasks() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const fetchTasks = () => {
-    setLoading(true);
-    fetch('/api/agent-tasks')
-      .then(res => res.json())
-      .then(data => {
-        setTasks(data.tasks || []);
-        setLastUpdated(new Date());
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchTasks, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [loading, setLoading] = useState(false);
 
   const getTasksByStatus = (status: string) => {
     return tasks.filter(t => t.status === status);
@@ -56,20 +71,22 @@ export default function AgentTasks() {
     }
   };
 
-  const moveTask = async (taskId: string, newStatus: string) => {
-    // Optimistic update
+  const moveTask = (taskId: string, newStatus: string) => {
     const updatedTasks = tasks.map(t => 
       t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t
     );
     setTasks(updatedTasks);
-    
-    // Send to API
-    await fetch('/api/agent-tasks', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ taskId, status: newStatus }),
-    });
+    // Store in localStorage for persistence
+    localStorage.setItem('agent-tasks', JSON.stringify(updatedTasks));
   };
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('agent-tasks');
+    if (stored) {
+      setTasks(JSON.parse(stored));
+    }
+  }, []);
 
   return (
     <div>
@@ -77,23 +94,10 @@ export default function AgentTasks() {
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>🤖 Agent Tasks</h1>
           <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            What I'm working on • Auto-refreshes every 30s
+            What I'm working on • Changes saved locally
           </p>
         </div>
-        <button 
-          onClick={fetchTasks}
-          className="btn btn-secondary"
-          style={{ padding: '0.5rem 1rem' }}
-        >
-          🔄 Refresh
-        </button>
       </div>
-
-      {lastUpdated && (
-        <p className="text-secondary" style={{ fontSize: '0.75rem', marginBottom: '1.5rem' }}>
-          Last synced: {lastUpdated.toLocaleTimeString()}
-        </p>
-      )}
 
       {loading ? (
         <p className="text-secondary">Loading...</p>
