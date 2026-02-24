@@ -5,32 +5,31 @@ import { useState, useEffect } from 'react';
 interface Task {
   id: string;
   title: string;
-  status: string;
-  priority: string;
+  status: 'todo' | 'in_progress' | 'completed';
+  priority: 'high' | 'medium' | 'low';
   description: string;
-  dueDate: string | null;
 }
 
-export default function Tasks() {
+const columns = [
+  { id: 'todo', title: 'To Do', color: '#64748b' },
+  { id: 'in_progress', title: 'In Progress', color: '#3b82f6' },
+  { id: 'completed', title: 'Done', color: '#22c55e' },
+];
+
+export default function AgentTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchTasks = () => {
     setLoading(true);
-    fetch('/api/tasks?t=' + Date.now())
+    fetch('/api/agent-tasks')
       .then(res => res.json())
       .then(data => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setTasks(data.tasks || []);
-          setLastUpdated(new Date());
-        }
+        setTasks(data.tasks || []);
+        setLastUpdated(new Date());
       })
-      .catch(err => setError('Failed to load tasks'))
+      .catch(err => console.error(err))
       .finally(() => setLoading(false));
   };
 
@@ -38,90 +37,150 @@ export default function Tasks() {
     fetchTasks();
   }, []);
 
-  const filtered = filter === 'all' ? tasks : tasks.filter(t => {
-    if (filter === 'in-progress') return t.status === 'In progress';
-    return t.status.toLowerCase() === filter;
-  });
+  const getTasksByStatus = (status: string) => {
+    return tasks.filter(t => t.status === status);
+  };
 
-  const getPriorityClass = (priority: string) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'High': return 'badge-red';
-      case 'Medium': return 'badge-yellow';
-      default: return '';
+      case 'high': return '#ef4444';
+      case 'medium': return '#f59e0b';
+      case 'low': return '#22c55e';
+      default: return '#64748b';
     }
   };
 
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case 'Done': return 'badge-green';
-      case 'In progress': return '';
-      default: return '';
-    }
+  const moveTask = async (taskId: string, newStatus: string) => {
+    const updatedTasks = tasks.map(t => 
+      t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t
+    );
+    setTasks(updatedTasks);
+    
+    await fetch('/api/agent-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedTasks),
+    });
   };
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h1 className="page-title" style={{ margin: 0 }}>Tasks</h1>
+        <div>
+          <h1 className="page-title" style={{ margin: 0 }}>🤖 Agent Tasks</h1>
+          <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
+            What I'm working on
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button 
             onClick={fetchTasks}
             className="btn btn-secondary"
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+            style={{ padding: '0.5rem 1rem' }}
           >
             🔄 Refresh
           </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="text-secondary" style={{ fontSize: '0.875rem' }}>Synced from Notion</span>
-          <span className="status-dot green"></span>
-        </div>
       </div>
 
       {lastUpdated && (
-        <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '-1rem', marginBottom: '1rem' }}>
-          Last updated: {lastUpdated.toLocaleTimeString()}
+        <p className="text-secondary" style={{ fontSize: '0.75rem', marginBottom: '1.5rem' }}>
+          Last synced: {lastUpdated.toLocaleTimeString()}
         </p>
       )}
-      
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {['all', 'in-progress', 'Not started', 'Done'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            {f === 'in-progress' ? 'In Progress' : f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
-      </div>
 
-      {loading && <p className="text-secondary">Loading...</p>}
-      
-      {error && <p className="text-red">Error: {error}</p>}
-
-      {!loading && !error && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {filtered.map(task => (
-            <div key={task.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <input type="checkbox" checked={task.status === 'Done'} readOnly />
-              <span style={{ flex: 1, textDecoration: task.status === 'Done' ? 'line-through' : 'none', opacity: task.status === 'Done' ? 0.5 : 1 }}>
-                {task.title}
-              </span>
-              {task.dueDate && (
-                <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{task.dueDate}</span>
-              )}
-              <span className={`badge ${getPriorityClass(task.priority)}`}>
-                {task.priority}
-              </span>
-              <span className={`badge ${getStatusClass(task.status)}`} style={{ background: task.status === 'In progress' ? 'rgba(59, 130, 246, 0.2)' : '', color: task.status === 'In progress' ? '#60a5fa' : '' }}>
-                {task.status}
-              </span>
+      {loading ? (
+        <p className="text-secondary">Loading...</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          {columns.map(column => (
+            <div key={column.id}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                marginBottom: '1rem',
+                paddingBottom: '0.5rem',
+                borderBottom: `2px solid ${column.color}`
+              }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: column.color }}></span>
+                <h3 style={{ fontSize: '0.875rem', fontWeight: 600, margin: 0 }}>
+                  {column.title}
+                </h3>
+                <span style={{ 
+                  fontSize: '0.75rem', 
+                  background: column.color + '20', 
+                  color: column.color,
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '999px',
+                  marginLeft: 'auto'
+                }}>
+                  {getTasksByStatus(column.id).length}
+                </span>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {getTasksByStatus(column.id).map(task => (
+                  <div 
+                    key={task.id} 
+                    className="card"
+                    style={{ 
+                      cursor: 'grab',
+                      borderLeft: `3px solid ${getPriorityColor(task.priority)}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                      <span style={{ 
+                        fontSize: '0.625rem', 
+                        textTransform: 'uppercase', 
+                        fontWeight: 600,
+                        color: getPriorityColor(task.priority)
+                      }}>
+                        {task.priority}
+                      </span>
+                    </div>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 500, margin: '0 0 0.5rem 0' }}>
+                      {task.title}
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                      {task.description}
+                    </p>
+                    {column.id !== 'completed' && (
+                      <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.75rem' }}>
+                        {columns.filter(c => c.id !== column.id).map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => moveTask(task.id, c.id)}
+                            className="btn btn-secondary"
+                            style={{ 
+                              fontSize: '0.625rem', 
+                              padding: '0.25rem 0.5rem',
+                              background: c.id === 'completed' ? '#22c55e20' : '#3b82f620',
+                              color: c.id === 'completed' ? '#22c55e' : '#3b82f6'
+                            }}
+                          >
+                            → {c.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {getTasksByStatus(column.id).length === 0 && (
+                  <div style={{ 
+                    padding: '1rem', 
+                    border: '1px dashed var(--border)', 
+                    borderRadius: '0.5rem',
+                    textAlign: 'center',
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.75rem'
+                  }}>
+                    No tasks
+                  </div>
+                )}
+              </div>
             </div>
           ))}
-          {filtered.length === 0 && (
-            <p className="text-secondary">No tasks found</p>
-          )}
         </div>
       )}
     </div>
