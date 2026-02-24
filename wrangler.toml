@@ -1,0 +1,8 @@
+name = "mission-control-tasks"
+main = "worker.mjs"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mission-control-tasks"
+database_id = "2cd922ff-545e-4b53-acee-c5d98cfde2b8"
