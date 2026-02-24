@@ -10,7 +10,7 @@ interface Task {
   description: string;
 }
 
-const GIST_URL = 'https://raw.githubusercontent.com/MyOpenClaww/mission-control/main/tasks.json';
+const API_URL = 'https://openclaw-tasks.my-open-claww.workers.dev/';
 
 const columns = [
   { id: 'todo', title: 'To Do', color: '#64748b' },
@@ -25,7 +25,7 @@ export default function AgentTasks() {
 
   const fetchTasks = () => {
     setLoading(true);
-    fetch(GIST_URL + '?t=' + Date.now())
+    fetch(API_URL)
       .then(res => res.json())
       .then(data => {
         setTasks(data);
@@ -39,9 +39,9 @@ export default function AgentTasks() {
     fetchTasks();
   }, []);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 10 seconds
   useEffect(() => {
-    const interval = setInterval(fetchTasks, 30000);
+    const interval = setInterval(fetchTasks, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -58,13 +58,30 @@ export default function AgentTasks() {
     }
   };
 
+  const moveTask = async (taskId: string, newStatus: string) => {
+    // Optimistic update
+    const updatedTasks = tasks.map(t => 
+      t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t
+    );
+    setTasks(updatedTasks);
+    
+    // Send to API
+    await fetch(API_URL, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: taskId, status: newStatus }),
+    });
+    
+    fetchTasks();
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>🤖 Agent Tasks</h1>
           <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            What I'm working on • Auto-refreshes every 30s
+            What I&apos;m working on • Live updates every 10s
           </p>
         </div>
         <button 
@@ -137,6 +154,25 @@ export default function AgentTasks() {
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
                       {task.description}
                     </p>
+                    {column.id !== 'completed' && (
+                      <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.75rem' }}>
+                        {columns.filter(c => c.id !== column.id).map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => moveTask(task.id, c.id)}
+                            className="btn btn-secondary"
+                            style={{ 
+                              fontSize: '0.625rem', 
+                              padding: '0.25rem 0.5rem',
+                              background: c.id === 'completed' ? '#22c55e20' : '#3b82f620',
+                              color: c.id === 'completed' ? '#22c55e' : '#3b82f6'
+                            }}
+                          >
+                            → {c.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {getTasksByStatus(column.id).length === 0 && (
