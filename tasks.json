@@ -26,5 +26,12 @@
     "status": "completed",
     "priority": "medium",
     "description": "Updated MEMORY.md and daily notes"
+  },
+  {
+    "id": "test",
+    "title": "Test task",
+    "status": "todo",
+    "priority": "low",
+    "description": "Testing real-time task updates"
   }
 ]
