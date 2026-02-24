@@ -37,6 +37,12 @@ export default function AgentTasks() {
     fetchTasks();
   }, []);
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchTasks, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const getTasksByStatus = (status: string) => {
     return tasks.filter(t => t.status === status);
   };
@@ -51,15 +57,17 @@ export default function AgentTasks() {
   };
 
   const moveTask = async (taskId: string, newStatus: string) => {
+    // Optimistic update
     const updatedTasks = tasks.map(t => 
       t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t
     );
     setTasks(updatedTasks);
     
+    // Send to API
     await fetch('/api/agent-tasks', {
-      method: 'POST',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedTasks),
+      body: JSON.stringify({ taskId, status: newStatus }),
     });
   };
 
@@ -69,18 +77,16 @@ export default function AgentTasks() {
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>🤖 Agent Tasks</h1>
           <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            What I'm working on
+            What I'm working on • Auto-refreshes every 30s
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button 
-            onClick={fetchTasks}
-            className="btn btn-secondary"
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            🔄 Refresh
-          </button>
-        </div>
+        <button 
+          onClick={fetchTasks}
+          className="btn btn-secondary"
+          style={{ padding: '0.5rem 1rem' }}
+        >
+          🔄 Refresh
+        </button>
       </div>
 
       {lastUpdated && (
@@ -125,7 +131,6 @@ export default function AgentTasks() {
                     key={task.id} 
                     className="card"
                     style={{ 
-                      cursor: 'grab',
                       borderLeft: `3px solid ${getPriorityColor(task.priority)}`
                     }}
                   >
