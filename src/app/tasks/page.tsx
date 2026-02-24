@@ -10,43 +10,7 @@ interface Task {
   description: string;
 }
 
-const initialTasks: Task[] = [
-  {
-    id: "1",
-    title: "Set up Discord stock research factory",
-    status: "in_progress",
-    priority: "high",
-    description: "Configure per-channel prompts and sub-agent automation"
-  },
-  {
-    id: "2",
-    title: "Build kanban tasks page in mission-control",
-    status: "completed",
-    priority: "high",
-    description: "Created kanban-style tasks page showing what I'm working on"
-  },
-  {
-    id: "3",
-    title: "Set up Notion integration",
-    status: "completed",
-    priority: "medium",
-    description: "Connected to Notion API for task access"
-  },
-  {
-    id: "4",
-    title: "Maintain daily memory files",
-    status: "completed",
-    priority: "medium",
-    description: "Updated MEMORY.md and daily notes"
-  },
-  {
-    id: "test",
-    title: "Test task",
-    status: "todo",
-    priority: "low",
-    description: "Testing real-time task updates"
-  }
-];
+const GIST_URL = 'https://raw.githubusercontent.com/MyOpenClaww/mission-control/main/tasks.json';
 
 const columns = [
   { id: 'todo', title: 'To Do', color: '#64748b' },
@@ -55,8 +19,31 @@ const columns = [
 ];
 
 export default function AgentTasks() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [loading, setLoading] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchTasks = () => {
+    setLoading(true);
+    fetch(GIST_URL + '?t=' + Date.now())
+      .then(res => res.json())
+      .then(data => {
+        setTasks(data);
+        setLastUpdated(new Date());
+      })
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchTasks, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getTasksByStatus = (status: string) => {
     return tasks.filter(t => t.status === status);
@@ -71,33 +58,29 @@ export default function AgentTasks() {
     }
   };
 
-  const moveTask = (taskId: string, newStatus: string) => {
-    const updatedTasks = tasks.map(t => 
-      t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t
-    );
-    setTasks(updatedTasks);
-    // Store in localStorage for persistence
-    localStorage.setItem('agent-tasks', JSON.stringify(updatedTasks));
-  };
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('agent-tasks');
-    if (stored) {
-      setTasks(JSON.parse(stored));
-    }
-  }, []);
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>🤖 Agent Tasks</h1>
           <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            What I'm working on • Changes saved locally
+            What I'm working on • Auto-refreshes every 30s
           </p>
         </div>
+        <button 
+          onClick={fetchTasks}
+          className="btn btn-secondary"
+          style={{ padding: '0.5rem 1rem' }}
+        >
+          🔄 Refresh
+        </button>
       </div>
+
+      {lastUpdated && (
+        <p className="text-secondary" style={{ fontSize: '0.75rem', marginBottom: '1.5rem' }}>
+          Last synced: {lastUpdated.toLocaleTimeString()}
+        </p>
+      )}
 
       {loading ? (
         <p className="text-secondary">Loading...</p>
@@ -154,25 +137,6 @@ export default function AgentTasks() {
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
                       {task.description}
                     </p>
-                    {column.id !== 'completed' && (
-                      <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.75rem' }}>
-                        {columns.filter(c => c.id !== column.id).map(c => (
-                          <button
-                            key={c.id}
-                            onClick={() => moveTask(task.id, c.id)}
-                            className="btn btn-secondary"
-                            style={{ 
-                              fontSize: '0.625rem', 
-                              padding: '0.25rem 0.5rem',
-                              background: c.id === 'completed' ? '#22c55e20' : '#3b82f620',
-                              color: c.id === 'completed' ? '#22c55e' : '#3b82f6'
-                            }}
-                          >
-                            → {c.title}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
                 {getTasksByStatus(column.id).length === 0 && (
