@@ -39,9 +39,9 @@ export default function AgentTasks() {
     fetchTasks();
   }, []);
 
-  // Auto-refresh every 10 seconds
+  // Auto-refresh every 30 minutes
   useEffect(() => {
-    const interval = setInterval(fetchTasks, 10000);
+    const interval = setInterval(fetchTasks, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -81,7 +81,7 @@ export default function AgentTasks() {
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>🤖 Agent Tasks</h1>
           <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            What I&apos;m working on • Live updates every 10s
+            What I&apos;m working on • Updates every 30 mins
           </p>
         </div>
         <button 
