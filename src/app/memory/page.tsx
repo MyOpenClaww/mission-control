@@ -23,7 +23,15 @@ export default function Memory() {
 
   useEffect(() => {
     fetchMemories();
-  }, [search, category]);
+  }, [category]);
+
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      fetchMemories();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchMemories = async () => {
     setLoading(true);
@@ -72,7 +80,33 @@ export default function Memory() {
     }
   };
 
-  const categories = ['trading', 'work', 'personal', 'technical', 'goals', 'learnings'];
+  // Format content with proper line breaks
+  const formatContent = (content: string) => {
+    return content.split('\n').map((line, i) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+        return <li key={i}>{trimmed.substring(2)}</li>;
+      }
+      if (trimmed.startsWith('## ')) {
+        return <h4 key={i} style={{ marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>{trimmed.substring(3)}</h4>;
+      }
+      if (trimmed.startsWith('### ')) {
+        return <h5 key={i} style={{ marginTop: '0.75rem', marginBottom: '0.25rem', fontWeight: 500, color: '#6b7280' }}>{trimmed.substring(4)}</h5>;
+      }
+      if (trimmed.startsWith('- [x]') || trimmed.startsWith('- [X]')) {
+        return <li key={i} style={{ color: '#10b981', textDecoration: 'line-through' }}>✓ {trimmed.substring(6)}</li>;
+      }
+      if (trimmed.startsWith('- [')) {
+        return <li key={i}>☐ {trimmed.substring(4)}</li>;
+      }
+      if (trimmed === '') {
+        return <br key={i} />;
+      }
+      return <span key={i}>{trimmed}<br /></span>;
+    });
+  };
+
+  const categories = ['context', 'daily', 'trading', 'work', 'personal', 'technical', 'goals', 'learnings'];
 
   return (
     <div>
@@ -98,7 +132,10 @@ export default function Memory() {
         />
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            fetchMemories();
+          }}
           className="input"
           style={{ minWidth: '150px' }}
         >
@@ -107,6 +144,15 @@ export default function Memory() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
+        {category && (
+          <button 
+            onClick={() => setCategory('')}
+            className="btn btn-secondary"
+            style={{ padding: '0.5rem' }}
+          >
+            ✕ Clear
+          </button>
+        )}
       </div>
 
       {/* Add Memory Form */}
@@ -137,11 +183,11 @@ export default function Memory() {
                 </select>
               </div>
               <textarea
-                placeholder="What do you want to remember?"
+                placeholder="What do you want to remember? (Use ## for headers, - for bullets)"
                 value={newMemory.content}
                 onChange={(e) => setNewMemory({ ...newMemory, content: e.target.value })}
                 className="input"
-                rows={4}
+                rows={6}
                 required
               />
               <input
@@ -162,31 +208,37 @@ export default function Memory() {
         <div className="text-secondary">Loading memories...</div>
       ) : memories.length === 0 ? (
         <div className="card">
-          <div className="text-secondary">No memories found. Add your first memory!</div>
+          <div className="text-secondary">No memories found. {category && 'Try clearing the filter.'}</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {memories.map((memory) => (
             <div key={memory.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span className="badge">{memory.category}</span>
+                    <span className="badge" style={{ background: getCategoryColor(memory.category) }}>
+                      {memory.category}
+                    </span>
                     <span className="text-secondary" style={{ fontSize: '0.875rem' }}>
-                      {memory.date}
+                      {memory.date === 'long-term' ? 'Long-term' : memory.date}
                     </span>
                   </div>
-                  <div style={{ marginBottom: '0.5rem' }}>{memory.content}</div>
+                  <div style={{ lineHeight: 1.6 }}>
+                    {formatContent(memory.content)}
+                  </div>
                   {memory.tags && (
-                    <div className="text-secondary" style={{ fontSize: '0.75rem' }}>
-                      Tags: {memory.tags}
+                    <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.75rem' }}>
+                      {memory.tags.split(',').map((tag, i) => (
+                        <span key={i} style={{ marginRight: '0.5rem' }}>#{tag.trim()}</span>
+                      ))}
                     </div>
                   )}
                 </div>
                 <button
                   onClick={() => deleteMemory(memory.id)}
                   className="btn btn-danger"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', marginLeft: '1rem' }}
                 >
                   Delete
                 </button>
@@ -218,6 +270,11 @@ export default function Memory() {
           color: white;
           border: none;
         }
+        .btn-secondary {
+          background: #6b7280;
+          color: white;
+          border: none;
+        }
         .btn-danger {
           background: #ef4444;
           color: white;
@@ -229,6 +286,7 @@ export default function Memory() {
           border-radius: 9999px;
           font-size: 0.75rem;
           text-transform: capitalize;
+          color: white;
         }
         .text-secondary {
           color: #6b7280;
@@ -236,4 +294,18 @@ export default function Memory() {
       `}</style>
     </div>
   );
+}
+
+function getCategoryColor(category: string): string {
+  const colors: Record<string, string> = {
+    context: '#8b5cf6',
+    daily: '#3b82f6',
+    trading: '#10b981',
+    work: '#f59e0b',
+    personal: '#ec4899',
+    technical: '#06b6d4',
+    goals: '#6366f1',
+    learnings: '#84cc16'
+  };
+  return colors[category] || '#6b7280';
 }
