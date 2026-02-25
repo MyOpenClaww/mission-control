@@ -11,7 +11,7 @@ interface Memory {
   created_at: string;
 }
 
-const API_URL = 'https://openclaw-tasks.my-open-claww.workers.dev/memories';
+const API_URL = 'https://openclaw-memories.my-open-claww.workers.dev/memories';
 
 export default function Memory() {
   const [memories, setMemories] = useState<Memory[]>([]);
